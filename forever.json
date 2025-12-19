@@ -1,0 +1,13 @@
+{
+  "uid": "uniacc-backend",
+  "append": true,
+  "watch": false,
+  "script": "./backend/dist/index.js",
+  "sourceDir": "/opt/Uniacc-dashboard-admision",
+  "logFile": "./logs/forever.log",
+  "outFile": "./logs/forever-out.log",
+  "errFile": "./logs/forever-error.log",
+  "minUptime": "10s",
+  "maxRestarts": 10,
+  "killTree": true
+}

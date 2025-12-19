@@ -14,7 +14,7 @@ export class PostulantesTrackingService {
         return []
       }
 
-      return result[0].values.map(row => String(row[0]))
+      return result[0].values.map((row: any[]) => String(row[0]))
     } catch (error) {
       console.error('Error al obtener postulantes notificados:', error)
       return []

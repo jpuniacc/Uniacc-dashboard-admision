@@ -10,14 +10,29 @@ import { EmailService } from './services/email.service'
 import { formatChileTime } from './utils/date.utils'
 
 // Cargar variables de entorno
-dotenv.config()
+import path from 'path'
+dotenv.config({ path: path.join(__dirname, '../.env') })
 
 const app: Application = express()
 const PORT = process.env.PORT || 3001
 
 // Middlewares
+// Configurar CORS para permitir múltiples orígenes
+const allowedOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['http://localhost:5173', 'http://localhost:4173', 'http://172.16.0.206:4173']
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Permitir requests sin origen (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true)
+    } else {
+      callback(null, true) // Permitir todos por ahora, ajustar según necesidad
+    }
+  },
   credentials: true,
 }))
 app.use(express.json())

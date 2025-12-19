@@ -50,7 +50,7 @@ export class DesistimientoService {
         const columns = result[0].columns
         
         const obj: any = {}
-        columns.forEach((col, index) => {
+        columns.forEach((col: string, index: number) => {
           obj[col] = row[index]
         })
         
@@ -72,7 +72,7 @@ export class DesistimientoService {
       const result = db.exec('SELECT codint FROM postulante_extras WHERE desistido = 1')
       
       if (result.length > 0) {
-        return result[0].values.map(row => String(row[0]))
+        return result[0].values.map((row: any[]) => String(row[0]))
       }
       
       return []

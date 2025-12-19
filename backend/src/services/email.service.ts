@@ -23,7 +23,7 @@ export class EmailService {
       tls: {
         rejectUnauthorized: false // Para servidores SMTP internos sin certificado válido
       }
-    })
+    } as nodemailer.TransportOptions)
   }
 
   /**

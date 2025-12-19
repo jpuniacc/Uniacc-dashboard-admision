@@ -109,6 +109,10 @@ export interface PostulanteStats {
   matriculados: number
   matriculadosPrimeraOpcion: number
   matriculadosOtrasOpciones: number
+  enEspera: number
+  aprobados: number
+  pendientes: number
+  desistidos: number
 }
 
 export interface FiltrosPostulante {
