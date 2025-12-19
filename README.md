@@ -309,19 +309,81 @@ El sistema incluye correcciones de z-index y overflow para evitar que los dropdo
 
 ## 🚀 Despliegue a Producción
 
-### Backend
+> **📘 Para información completa de producción, consulta:** [README_PRODUCCION.md](./README_PRODUCCION.md)
+
+### Inicio Rápido en Producción
+
 ```bash
-cd backend
-npm run build
-npm start
+# 1. Compilar proyecto
+./scripts/build.sh
+
+# 2. Iniciar con PM2
+./scripts/pm2-start.sh
+./scripts/pm2-frontend.sh
+
+# 3. Verificar estado
+pm2 list
 ```
 
-### Frontend
+### Actualización de la Aplicación
+
+Cuando hay nuevos cambios en el repositorio:
+
 ```bash
-npm run build
+# Opción 1: Script automático (Recomendado)
+./scripts/update.sh
+
+# Opción 2: Manual
+pm2 stop all
+git pull origin main
+./scripts/build.sh
+pm2 restart all
 ```
 
-Los archivos compilados estarán en `dist/` listos para servir con cualquier servidor estático (nginx, Apache, etc.).
+### Gestión con PM2
+
+```bash
+# Ver procesos
+pm2 list
+
+# Ver logs
+pm2 logs
+
+# Monitor en tiempo real
+pm2 monit
+
+# Reiniciar
+pm2 restart all
+
+# Guardar configuración
+pm2 save
+```
+
+### Gestión con Git
+
+```bash
+# Actualizar desde GitHub
+git pull origin main
+
+# Subir cambios
+git add .
+git commit -m "Descripción de cambios"
+git push origin main
+```
+
+**Nota:** Para autenticación con GitHub, usa un Personal Access Token. Ver [README_PRODUCCION.md](./README_PRODUCCION.md) para más detalles.
+
+### Interfaz Web PM2 Plus
+
+El proyecto está conectado a PM2 Plus para monitoreo:
+- **Dashboard:** https://app.pm2.io/
+- **Acceso directo:** https://app.pm2.io/#/r/iua26ys31spze9x
+
+### Documentación Completa
+
+- **[README_PRODUCCION.md](./README_PRODUCCION.md)** - Guía completa de producción
+- **[ADMINISTRACION.md](./ADMINISTRACION.md)** - Administración del sistema
+- **[MANUAL_ACTUALIZACION.md](./MANUAL_ACTUALIZACION.md)** - Manual de actualización detallado
 
 ## 📝 Documentación Adicional
 
