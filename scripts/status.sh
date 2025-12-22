@@ -14,7 +14,7 @@ if [ -f "$PID_FILE" ]; then
     if ps -p $PID > /dev/null 2>&1; then
         echo "✅ Backend: Corriendo (PID: $PID)"
         # Verificar health endpoint
-        if curl -s http://localhost:3001/api/health > /dev/null 2>&1; then
+        if curl -s http://172.16.0.206:3001/api/health > /dev/null 2>&1; then
             echo "   Health check: ✅ OK"
         else
             echo "   Health check: ⚠️  No responde"

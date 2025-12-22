@@ -87,7 +87,7 @@ view_logs() {
 
 check_health() {
     echo -e "${YELLOW}Verificando salud del Backend...${NC}"
-    if curl -s http://localhost:3001/api/health | jq . 2>/dev/null; then
+    if curl -s http://172.16.0.206:3001/api/health | jq . 2>/dev/null; then
         echo -e "${GREEN}✅ Backend está saludable${NC}"
     else
         echo -e "${RED}❌ Backend no responde${NC}"

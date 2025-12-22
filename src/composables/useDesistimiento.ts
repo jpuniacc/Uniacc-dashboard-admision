@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = import.meta.env.VITE_API_URL || 'http://172.16.0.206:3001'
 
 export function useDesistimiento() {
   const isLoading = ref(false)
