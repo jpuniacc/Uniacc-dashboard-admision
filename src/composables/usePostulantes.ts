@@ -7,7 +7,8 @@ import type {
 } from '@/types/postulante'
 import { useErrorStore } from '@/stores/error'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://172.16.0.206:3001'
+// Usar URL relativa si está en HTTPS, o la variable de entorno
+const API_URL = import.meta.env.VITE_API_URL || (window.location.protocol === 'https:' ? '' : 'http://172.16.0.206:3001')
 
 export function usePostulantes() {
   const errorStore = useErrorStore()
