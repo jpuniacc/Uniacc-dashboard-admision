@@ -32,10 +32,25 @@ export async function getDatabase(): Promise<Database> {
       codint TEXT PRIMARY KEY,
       desistido INTEGER DEFAULT 0,
       fecha_desistimiento TEXT,
+      estado_seguimiento TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  // Migración: agregar columna estado_seguimiento si no existe (para bases de datos existentes)
+  try {
+    const tableInfo = db.exec("PRAGMA table_info(postulante_extras)")
+    const columns = tableInfo.length > 0 ? tableInfo[0].values.map((row: any[]) => row[1]) : []
+    
+    if (!columns.includes('estado_seguimiento')) {
+      db.run(`ALTER TABLE postulante_extras ADD COLUMN estado_seguimiento TEXT`)
+      console.log('✅ Migración: columna estado_seguimiento agregada')
+    }
+  } catch (error) {
+    // Si falla, la columna probablemente ya existe
+    console.log('ℹ️  Columna estado_seguimiento ya existe o no se pudo verificar')
+  }
 
   // Crear tabla para tracking de notificaciones
   db.run(`
@@ -44,6 +59,25 @@ export async function getDatabase(): Promise<Database> {
       fecha_notificacion TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  // Crear tabla para historial de estados de seguimiento
+  db.run(`
+    CREATE TABLE IF NOT EXISTS historial_estados_seguimiento (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      codint TEXT NOT NULL,
+      estado_anterior TEXT,
+      estado_nuevo TEXT,
+      fecha_cambio TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (codint) REFERENCES postulante_extras(codint)
+    )
+  `)
+
+  // Crear índice para búsquedas rápidas
+  try {
+    db.run(`CREATE INDEX IF NOT EXISTS idx_historial_codint ON historial_estados_seguimiento(codint)`)
+  } catch (error) {
+    // El índice puede ya existir
+  }
 
   // Guardar cambios
   saveDatabase()

@@ -100,7 +100,7 @@ defineProps<{
   </div>
 
   <!-- Tarjetas de Estados -->
-  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-3 relative z-0">
+  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5 mt-3 relative z-0">
     <!-- Pendientes -->
     <Card class="overflow-hidden border-l-4 border-l-yellow-500">
       <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3">
@@ -158,6 +158,21 @@ defineProps<{
         <div v-if="isLoading" class="h-7 w-16 animate-pulse rounded bg-muted"></div>
         <div v-else class="text-2xl font-bold text-red-600 dark:text-red-400">{{ stats?.desistidos || 0 }}</div>
         <p class="text-[10px] text-muted-foreground mt-0.5">Postulantes desistidos</p>
+      </CardContent>
+    </Card>
+
+    <!-- Alumnos Vigentes -->
+    <Card class="overflow-hidden border-l-4 border-l-cyan-500">
+      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3">
+        <CardTitle class="text-xs font-medium">Alumnos Vigentes</CardTitle>
+        <div class="rounded-full bg-cyan-100 p-1.5 dark:bg-cyan-900">
+          <Users class="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+        </div>
+      </CardHeader>
+      <CardContent class="pb-3">
+        <div v-if="isLoading" class="h-7 w-16 animate-pulse rounded bg-muted"></div>
+        <div v-else class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{{ stats?.alumnosVigentes || 0 }}</div>
+        <p class="text-[10px] text-muted-foreground mt-0.5">Detectados automáticamente</p>
       </CardContent>
     </Card>
   </div>

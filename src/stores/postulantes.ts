@@ -19,6 +19,7 @@ export const usePostulantesStore = defineStore('postulantes-store', () => {
     search: '',
     carrera: '',
     estado: '',
+    estado_seguimiento: '',
     ano: '',
     sexo: '',
   })
@@ -76,6 +77,15 @@ export const usePostulantesStore = defineStore('postulantes-store', () => {
         // Sin filtro: ocultar desistidos por defecto
         filtered = filtered.filter(p => !p.desistido)
       }
+
+    // Filtro por estado de seguimiento (no_contesta, pendiente_documentacion, evaluando, alumno_vigente)
+    // Se combina con el filtro de estado de postulación (AND lógico)
+    if (filtros.value.estado_seguimiento) {
+      filtered = filtered.filter(p => {
+        // Verificar que el postulante tenga el estado de seguimiento seleccionado
+        return p.estado_seguimiento === filtros.value.estado_seguimiento
+      })
+    }
 
     // Filtro por búsqueda (RUT, nombre, apellidos)
     if (filtros.value.search) {
@@ -192,6 +202,7 @@ export const usePostulantesStore = defineStore('postulantes-store', () => {
       search: '',
       carrera: '',
       estado: '',
+      estado_seguimiento: '',
       ano: '',
       sexo: '',
     }

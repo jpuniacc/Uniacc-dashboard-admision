@@ -13,6 +13,7 @@ Backend Node.js/Express con TypeScript para el sistema de gestión de postulante
 - ✅ Manejo de errores centralizado
 - ✅ Sistema de notificaciones por correo para nuevos postulantes
 - ✅ Actualización automática cada hora (Lun-Sáb, 07:00-23:00)
+- ✅ Sistema de gestión de desistimientos
 
 ## Requisitos
 
@@ -135,6 +136,7 @@ Obtener estadísticas generales
 ```json
 {
   "total": 1234,
+  "desistidos": 45,
   "porCarrera": [
     { "carrera": "INGENIERÍA", "count": 150 }
   ],
@@ -155,19 +157,80 @@ Exportar datos con filtros
 - `format` (string): Formato de exportación ('csv' o 'json', default: 'csv')
 - Mismo filtros que el endpoint de lista
 
+### POST /api/postulantes/:codint/desistir
+
+Marcar un postulante como desistido
+
+**Parámetros:**
+- `codint` (string): Código interno del postulante
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Postulante marcado como desistido"
+}
+```
+
+### DELETE /api/postulantes/:codint/desistir
+
+Desmarcar un postulante como desistido (reactivar)
+
+**Parámetros:**
+- `codint` (string): Código interno del postulante
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Desistimiento removido"
+}
+```
+
+## Sistema de Desistimientos
+
+El sistema permite marcar y desmarcar postulantes como desistidos. Esta información se almacena en SQLite y se incluye en las respuestas de los endpoints de postulantes.
+
+### Funcionamiento
+
+- **Almacenamiento**: Los desistimientos se guardan en la tabla `postulante_extras` de SQLite
+- **Campo en respuestas**: Todos los postulantes incluyen el campo `desistido` (boolean) en sus respuestas
+- **Filtrado**: Los postulantes desistidos se pueden filtrar usando el parámetro `estado=desistido` en el endpoint de lista
+- **Estadísticas**: El endpoint `/api/postulantes/stats` incluye el conteo total de desistidos en la respuesta
+- **Por defecto**: Los postulantes desistidos se ocultan por defecto en las listas (a menos que se filtre específicamente por desistidos)
+
+### Respuesta de Estadísticas
+
+El endpoint de estadísticas incluye el campo `desistidos`:
+
+```json
+{
+  "total": 1234,
+  "desistidos": 45,
+  "porCarrera": [...],
+  "porMes": [...],
+  "nuevosHoy": 5,
+  "nuevosEstaSemana": 32
+}
+```
+
 ## Estructura del Proyecto
 
 ```
 backend/
 ├── src/
 │   ├── config/
-│   │   └── database.ts          # Configuración SQL Server
+│   │   ├── database.ts          # Configuración SQL Server
+│   │   └── sqlite.ts             # Configuración SQLite (desistimientos)
 │   ├── controllers/
-│   │   └── postulantes.controller.ts
+│   │   ├── postulantes.controller.ts
+│   │   └── desistimiento.controller.ts
 │   ├── services/
-│   │   └── postulantes.service.ts
+│   │   ├── postulantes.service.ts
+│   │   └── desistimiento.service.ts
 │   ├── routes/
-│   │   └── postulantes.routes.ts
+│   │   ├── postulantes.routes.ts
+│   │   └── desistimiento.routes.ts
 │   ├── types/
 │   │   └── postulante.types.ts  # Interfaces TypeScript
 │   └── index.ts                 # Punto de entrada

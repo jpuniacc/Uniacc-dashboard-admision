@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3001
 // Configurar CORS para permitir múltiples orígenes
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['http://localhost:5173', 'http://localhost:4173', 'http://172.16.0.206:4173']
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173', 'http://172.16.0.206:4173']
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -98,6 +98,8 @@ async function startServer() {
       console.log(`   - GET    /api/postulantes/export`)
       console.log(`   - POST   /api/postulantes/:codint/desistir`)
       console.log(`   - DELETE /api/postulantes/:codint/desistir`)
+      console.log(`   - PUT    /api/postulantes/:codint/estado-seguimiento`)
+      console.log(`   - GET    /api/postulantes/:codint/historial-estados`)
     })
   } catch (error) {
     console.error('❌ Error al iniciar el servidor:', error)

@@ -26,6 +26,7 @@ declare module 'vue' {
     DialogTitle: typeof import('./src/components/ui/dialog/DialogTitle.vue')['default']
     DialogTrigger: typeof import('./src/components/ui/dialog/DialogTrigger.vue')['default']
     EstadoPostulacionTimeline: typeof import('./src/components/Postulantes/EstadoPostulacionTimeline.vue')['default']
+    HistorialEstadosSeguimiento: typeof import('./src/components/Postulantes/HistorialEstadosSeguimiento.vue')['default']
     HomeView: typeof import('./src/views/Dashboard/HomeView.vue')['default']
     Input: typeof import('./src/components/ui/input/Input.vue')['default']
     NotFound: typeof import('./src/views/NotFound.vue')['default']

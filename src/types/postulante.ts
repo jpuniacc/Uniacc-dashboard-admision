@@ -90,6 +90,12 @@ export interface Postulante {
   
   // Estado de desistimiento (desde SQLite backend)
   desistido?: boolean
+  
+  // Estado de seguimiento (desde SQLite backend)
+  estado_seguimiento?: string | null // 'no_contesta' | 'pendiente_documentacion' | 'evaluando' | 'alumno_vigente'
+  
+  // Indica si el estado "alumno_vigente" fue detectado automáticamente desde MT_ALUMNO
+  es_vigente_automatico?: boolean
 }
 
 export interface PostulanteResponse {
@@ -113,6 +119,7 @@ export interface PostulanteStats {
   aprobados: number
   pendientes: number
   desistidos: number
+  alumnosVigentes: number
 }
 
 export interface FiltrosPostulante {
@@ -121,6 +128,7 @@ export interface FiltrosPostulante {
   search?: string
   carrera?: string
   estado?: string // 'pendiente' | 'en_espera' | 'aprobado' | 'matriculado' | 'desistido'
+  estado_seguimiento?: string // 'no_contesta' | 'pendiente_documentacion' | 'evaluando' | 'alumno_vigente'
   ano?: string
   comuna?: string
   sexo?: string
@@ -227,7 +235,8 @@ export function tieneRetraso(fechaRegistro: string | Date, estado: 'E' | 'A' | '
 // Helper para obtener badge de estado
 export function obtenerBadgeEstado(
   estado: 'E' | 'A' | 'M' | null | undefined,
-  fechaRegistro?: string | Date
+  fechaRegistro?: string | Date,
+  estadoSeguimiento?: string | null
 ): {
   texto: string
   variant: 'default' | 'secondary' | 'warning' | 'success' | 'destructive'
@@ -238,7 +247,28 @@ export function obtenerBadgeEstado(
   const diasHabiles = fechaRegistro ? calcularDiasHabiles(fechaRegistro) : 0
   const tieneAlerta = fechaRegistro ? tieneRetraso(fechaRegistro, estado) : false
   
+  // Si tiene estado de seguimiento "alumno_vigente", mostrar como estado especial (tiene prioridad sobre estados de postulación)
+  if (estadoSeguimiento === 'alumno_vigente') {
+    return {
+      texto: 'Alumno Vigente',
+      variant: 'default', // Azul (default en shadcn/ui suele ser azul)
+      descripcion: 'Alumno vigente en el sistema',
+      tieneAlerta: false,
+    }
+  }
+  
   if (!estado) {
+    // Si tiene otro estado de seguimiento, mostrar "Gestionado" en verde
+    if (estadoSeguimiento) {
+      return { 
+        texto: 'Gestionado', 
+        variant: 'success', // Verde
+        descripcion: 'Postulante con estado de seguimiento asignado',
+        tieneAlerta: false,
+      }
+    }
+    
+    // Sin estado de seguimiento ni estado de postulación
     return { 
       texto: 'Pendiente', 
       variant: tieneAlerta ? 'destructive' : 'secondary',

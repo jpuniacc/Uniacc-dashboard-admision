@@ -8,7 +8,7 @@ cd "$PROJECT_DIR"
 
 if [ "$MODE" = "dev" ]; then
     echo "🔧 Iniciando frontend en modo DESARROLLO..."
-    echo "   URL: http://localhost:5173"
+    echo "   URL: http://localhost:5174"
     npm run dev
 elif [ "$MODE" = "preview" ]; then
     # Verificar que está compilado

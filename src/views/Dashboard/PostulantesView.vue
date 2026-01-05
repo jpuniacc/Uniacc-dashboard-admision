@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Download, Eye, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-vue-next'
 import { usePostulantesStore } from '@/stores/postulantes'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
@@ -96,6 +96,20 @@ async function handleRefresh() {
   } finally {
     isRefreshing.value = false
   }
+}
+
+// Obtener label del estado de seguimiento
+function obtenerLabelEstadoSeguimiento(estado: string | null | undefined): string | null {
+  if (!estado) return null
+  
+  const estados: Record<string, string> = {
+    'no_contesta': 'No Contesta',
+    'pendiente_documentacion': 'Pendiente documentación',
+    'evaluando': 'Evaluando',
+    'alumno_vigente': 'Alumno Vigente',
+  }
+  
+  return estados[estado] || estado
 }
 
 // Obtener el estado más relevante para mostrar en la tabla
@@ -298,6 +312,15 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
                             {{ obtenerCarreraParaTabla(postulante).nombre }}
                           </span>
                           
+                          <!-- Badge de estado de seguimiento (solo si NO es alumno_vigente, ya que ese se muestra como estado principal) -->
+                          <Badge 
+                            v-if="postulante.estado_seguimiento && postulante.estado_seguimiento !== 'alumno_vigente' && !postulante.desistido" 
+                            variant="outline"
+                            class="text-[10px] gap-0.5 font-medium px-1.5 py-0"
+                          >
+                            {{ obtenerLabelEstadoSeguimiento(postulante.estado_seguimiento) }}
+                          </Badge>
+                          
                           <!-- Badge de desistido -->
                           <Badge 
                             v-if="postulante.desistido" 
@@ -313,13 +336,13 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
                           <!-- Badge de estado (solo si NO está desistido) -->
                           <Badge 
                             v-if="!postulante.desistido"
-                            :variant="obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG).variant"
+                            :variant="obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG, postulante.estado_seguimiento).variant"
                             class="text-[10px] gap-0.5 font-medium px-1.5 py-0"
-                            :title="obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG).descripcion"
+                            :title="obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG, postulante.estado_seguimiento).descripcion"
                           >
                             <!-- Icono -->
                             <svg 
-                              v-if="obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG).tieneAlerta"
+                              v-if="obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG, postulante.estado_seguimiento).tieneAlerta"
                               xmlns="http://www.w3.org/2000/svg" 
                               class="h-2.5 w-2.5" 
                               fill="none" 
@@ -330,7 +353,7 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
                             </svg>
                             <template v-else>
                               <svg 
-                                v-if="!obtenerEstadoParaTabla(postulante)" 
+                                v-if="!obtenerEstadoParaTabla(postulante) && !postulante.estado_seguimiento" 
                                 xmlns="http://www.w3.org/2000/svg" 
                                 class="h-3 w-3" 
                                 fill="none" 
@@ -338,6 +361,28 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
                                 stroke="currentColor"
                               >
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <svg 
+                                v-else-if="postulante.estado_seguimiento === 'alumno_vigente'" 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                class="h-2.5 w-2.5" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                              >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              <!-- Indicador de detección automática -->
+                              <svg 
+                                v-if="postulante.estado_seguimiento === 'alumno_vigente' && postulante.es_vigente_automatico" 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                class="h-2.5 w-2.5 ml-0.5 text-cyan-600" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                                title="Detectado automáticamente desde la base de datos"
+                              >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                               </svg>
                               <svg 
                                 v-else-if="obtenerEstadoParaTabla(postulante) === 'E'" 
@@ -370,7 +415,7 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                               </svg>
                             </template>
-                            {{ obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG).texto }}
+                            {{ obtenerBadgeEstado(obtenerEstadoParaTabla(postulante), postulante.FECREG, postulante.estado_seguimiento).texto }}
                           </Badge>
                           
                           <!-- Contador de carreras -->
