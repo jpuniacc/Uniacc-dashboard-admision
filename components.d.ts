@@ -31,6 +31,7 @@ declare module 'vue' {
     Input: typeof import('./src/components/ui/input/Input.vue')['default']
     NotFound: typeof import('./src/views/NotFound.vue')['default']
     PostulanteDetalle: typeof import('./src/components/Postulantes/PostulanteDetalle.vue')['default']
+    PostulantesComparacionView: typeof import('./src/views/Dashboard/PostulantesComparacionView.vue')['default']
     PostulantesFiltros: typeof import('./src/components/Postulantes/PostulantesFiltros.vue')['default']
     PostulantesStats: typeof import('./src/components/Postulantes/PostulantesStats.vue')['default']
     PostulantesView: typeof import('./src/views/Dashboard/PostulantesView.vue')['default']

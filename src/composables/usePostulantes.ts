@@ -42,6 +42,33 @@ export function usePostulantes() {
   }
 
   /**
+   * Obtener lista de postulantes con filtros adicionales (comparación)
+   * Excluye matriculados pagados y valida que al menos una carrera no esté oculta
+   * El filtrado se realiza en el frontend
+   */
+  async function fetchPostulantesComparacion(): Promise<PostulanteResponse | null> {
+    loading.value = true
+    try {
+      const response = await fetch(`${API_URL}/api/postulantes/comparacion`)
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+
+      const data: PostulanteResponse = await response.json()
+      return data
+    } catch (error) {
+      console.error('Error al obtener postulantes de comparación:', error)
+      errorStore.setError({
+        error: error instanceof Error ? error : new Error('Error al obtener postulantes de comparación'),
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Obtener detalle de un postulante por ID
    */
   async function fetchPostulanteById(codint: string): Promise<Postulante | null> {
@@ -212,6 +239,7 @@ export function usePostulantes() {
   return {
     loading,
     fetchPostulantes,
+    fetchPostulantesComparacion,
     fetchPostulanteById,
     fetchStats,
     exportPostulantes,
