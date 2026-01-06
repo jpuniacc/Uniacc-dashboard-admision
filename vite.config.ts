@@ -12,6 +12,10 @@ import Components from 'unplugin-vue-components/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: parseInt(process.env.PORT || '5174', 10),
+    host: true,
+  },
   css: {
     postcss: {
       plugins: [tailwind(), autoprefixer()],

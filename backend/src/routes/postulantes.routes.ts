@@ -7,6 +7,9 @@ const controller = new PostulantesController()
 // GET /api/postulantes - Lista con paginación y filtros
 router.get('/', controller.getPostulantes.bind(controller))
 
+// GET /api/postulantes/comparacion - Lista con filtros adicionales (excluye matriculados pagados y valida carreras no ocultas)
+router.get('/comparacion', controller.getPostulantesComparacion.bind(controller))
+
 // GET /api/postulantes/stats - Estadísticas
 router.get('/stats', controller.getStats.bind(controller))
 

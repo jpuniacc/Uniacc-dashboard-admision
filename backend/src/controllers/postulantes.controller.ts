@@ -36,6 +36,30 @@ export class PostulantesController {
     }
   }
 
+  async getPostulantesComparacion(req: Request, res: Response): Promise<void> {
+    try {
+      const filtros: FiltrosPostulante = {
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
+        search: req.query.search as string,
+        carrera: req.query.carrera as string,
+        fechaDesde: req.query.fechaDesde as string,
+        fechaHasta: req.query.fechaHasta as string,
+        comuna: req.query.comuna as string,
+        sexo: req.query.sexo as string,
+      }
+
+      const result = await postulantesService.getPostulantesComparacion(filtros)
+      res.json(result)
+    } catch (error) {
+      console.error('Error en getPostulantesComparacion controller:', error)
+      res.status(500).json({ 
+        error: 'Error al obtener postulantes de comparación',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      })
+    }
+  }
+
   async getPostulanteById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params

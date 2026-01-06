@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import EstadoPostulacionTimeline from './EstadoPostulacionTimeline.vue'
+import HistorialEstadosSeguimiento from './HistorialEstadosSeguimiento.vue'
 import type { Postulante } from '@/types/postulante'
 import { getNombreCompleto, getRutCompleto, formatearFecha, obtenerCarreras, obtenerEstadoCarrera } from '@/types/postulante'
 import { useDesistimiento } from '@/composables/useDesistimiento'
@@ -27,12 +28,40 @@ const emit = defineEmits<{
   'desistimiento-actualizado': []
 }>()
 
-const { marcarDesistido, desmarcarDesistido, isLoading: isLoadingDesistimiento } = useDesistimiento()
+const { marcarDesistido, desmarcarDesistido, actualizarEstadoSeguimiento, obtenerHistorialEstados, isLoading: isLoadingDesistimiento } = useDesistimiento()
+
+// Historial de estados de seguimiento
+const historialEstados = ref<Array<{
+  id: number
+  estado_anterior: string | null
+  estado_nuevo: string | null
+  fecha_cambio: string
+}>>([])
+const isLoadingHistorial = ref(false)
+
+// Cargar historial cuando se abre el diálogo o cambia el postulante
+watch([() => props.open, () => props.postulante?.CODINT], async ([isOpen, codint]) => {
+  if (isOpen && codint) {
+    isLoadingHistorial.value = true
+    const historial = await obtenerHistorialEstados(codint)
+    if (historial) {
+      historialEstados.value = historial
+    }
+    isLoadingHistorial.value = false
+  } else {
+    historialEstados.value = []
+  }
+}, { immediate: true })
 
 // Verificar si el postulante está matriculado en alguna carrera
 const estaMatriculado = computed(() => {
   if (!props.postulante?.estados) return false
   return props.postulante.estados.some(estado => estado.ESTADO === 'M')
+})
+
+// Verificar si el postulante es alumno vigente
+const esAlumnoVigente = computed(() => {
+  return props.postulante?.estado_seguimiento === 'alumno_vigente'
 })
 
 // Obtener todas las carreras relevantes (interés + matriculadas extras)
@@ -85,11 +114,82 @@ async function toggleDesistido() {
           : 'El postulante ha sido marcado como desistido.',
       }
     )
-    emit('desistimiento-actualizado')
-    emit('update:open', false)
+      emit('desistimiento-actualizado')
+      // Recargar historial
+      const historial = await obtenerHistorialEstados(props.postulante.CODINT)
+      if (historial) {
+        historialEstados.value = historial
+      }
+      emit('update:open', false)
   } else {
     toast.error('Error', {
       description: 'No se pudo actualizar el estado del postulante.',
+    })
+  }
+}
+
+// Estados de seguimiento disponibles
+const estadosSeguimiento = [
+  { valor: 'no_contesta', label: 'No Contesta', color: 'secondary' },
+  { valor: 'pendiente_documentacion', label: 'Pendiente envío documentación', color: 'default' },
+  { valor: 'evaluando', label: 'Evaluando', color: 'default' },
+  { valor: 'alumno_vigente', label: 'Alumno Vigente', color: 'default' },
+]
+
+async function cambiarEstadoSeguimiento(estado: string) {
+  if (!props.postulante) return
+  
+  // Si el estado ya está seleccionado, preguntar si se desea eliminar
+  if (props.postulante.estado_seguimiento === estado) {
+    const estadoLabel = estadosSeguimiento.find(e => e.valor === estado)?.label || estado
+    const confirmar = window.confirm(
+      `¿Desea eliminar el estado "${estadoLabel}"?\n\nEl estado de seguimiento será removido del postulante.`
+    )
+    
+    if (!confirmar) {
+      return
+    }
+    
+    // Eliminar el estado (pasar null)
+    const exito = await actualizarEstadoSeguimiento(props.postulante.CODINT, null)
+    
+    if (exito) {
+      toast.success('Estado eliminado', {
+        description: `El estado de seguimiento "${estadoLabel}" ha sido eliminado.`,
+      })
+      emit('desistimiento-actualizado')
+      // Recargar historial
+      const historial = await obtenerHistorialEstados(props.postulante.CODINT)
+      if (historial) {
+        historialEstados.value = historial
+      }
+      emit('update:open', false)
+    } else {
+      toast.error('Error', {
+        description: 'No se pudo eliminar el estado de seguimiento.',
+      })
+    }
+    return
+  }
+  
+  // Si no está seleccionado, actualizar normalmente
+  const exito = await actualizarEstadoSeguimiento(props.postulante.CODINT, estado)
+  
+  if (exito) {
+    const estadoLabel = estadosSeguimiento.find(e => e.valor === estado)?.label || estado
+    toast.success('Estado actualizado', {
+      description: `El estado de seguimiento se ha actualizado a: ${estadoLabel}`,
+    })
+    emit('desistimiento-actualizado')
+    // Recargar historial
+    const historial = await obtenerHistorialEstados(props.postulante.CODINT)
+    if (historial) {
+      historialEstados.value = historial
+    }
+    emit('update:open', false)
+  } else {
+    toast.error('Error', {
+      description: 'No se pudo actualizar el estado de seguimiento.',
     })
   }
 }
@@ -175,6 +275,7 @@ async function toggleDesistido() {
                 <!-- Timeline de estados -->
                 <EstadoPostulacionTimeline 
                   :estado-actual="obtenerEstadoCarrera(postulante, carrera.codigo)"
+                  :es-alumno-vigente="postulante.estado_seguimiento === 'alumno_vigente'"
                 />
               </div>
             </div>
@@ -216,6 +317,101 @@ async function toggleDesistido() {
             </div>
           </CardContent>
         </Card>
+
+        <!-- Estado de Seguimiento Actual -->
+        <Card v-if="postulante.estado_seguimiento" class="border-primary">
+          <CardContent class="pt-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <Badge variant="outline" class="text-sm">
+                  Estado: {{ estadosSeguimiento.find(e => e.valor === postulante.estado_seguimiento)?.label || postulante.estado_seguimiento }}
+                </Badge>
+                <Badge 
+                  v-if="postulante.estado_seguimiento === 'alumno_vigente' && postulante.es_vigente_automatico" 
+                  variant="secondary" 
+                  class="text-xs"
+                  title="Este estado fue detectado automáticamente desde la base de datos de alumnos"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Auto
+                </Badge>
+              </div>
+            </div>
+            <p v-if="postulante.estado_seguimiento === 'alumno_vigente' && postulante.es_vigente_automatico" class="text-xs text-muted-foreground mt-2">
+              Detectado automáticamente: El postulante está registrado como alumno vigente en el sistema académico.
+            </p>
+          </CardContent>
+        </Card>
+
+        <!-- Acciones de Estado de Seguimiento -->
+        <Card v-if="!estaMatriculado">
+          <CardHeader>
+            <CardTitle class="text-lg">Estado de Seguimiento</CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div class="grid grid-cols-2 gap-2">
+              <Button
+                v-for="estado in estadosSeguimiento"
+                :key="estado.valor"
+                :variant="postulante.estado_seguimiento === estado.valor ? 'default' : 'outline'"
+                :disabled="isLoadingDesistimiento"
+                @click="cambiarEstadoSeguimiento(estado.valor)"
+                class="w-full justify-start"
+                size="sm"
+              >
+                {{ estado.label }}
+              </Button>
+            </div>
+            
+            <!-- Historial de Estados -->
+            <div v-if="historialEstados.length > 0 || isLoadingHistorial" class="border-t pt-4">
+              <h4 class="text-sm font-semibold mb-3">Historial de Cambios</h4>
+              <HistorialEstadosSeguimiento 
+                :historial="historialEstados" 
+                :is-loading="isLoadingHistorial"
+              />
+            </div>
+            
+            <!-- Separador -->
+            <div class="border-t pt-4">
+              <!-- Acciones de Desistimiento -->
+              <div v-if="!esAlumnoVigente" class="flex justify-between items-center">
+                <Button
+                  :variant="postulante.desistido ? 'outline' : 'destructive'"
+                  :disabled="isLoadingDesistimiento"
+                  @click="toggleDesistido"
+                  class="gap-2"
+                >
+                  <svg v-if="postulante.desistido" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {{ postulante.desistido ? 'Reactivar Postulante' : 'Marcar como Desistido' }}
+                </Button>
+              </div>
+              
+              <!-- Mensaje cuando es alumno vigente -->
+              <div v-else-if="esAlumnoVigente" class="flex items-center gap-2 text-sm text-muted-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>El postulante es alumno vigente. No es posible marcarlo como desistido.</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <!-- Mensaje cuando está matriculado (fuera del card de estado de seguimiento) -->
+        <div v-if="estaMatriculado" class="flex items-center gap-2 pt-4 border-t text-sm text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>El postulante está matriculado. No es posible marcarlo como desistido.</span>
+        </div>
 
         <!-- Datos de Contacto -->
         <Card>
@@ -319,32 +515,6 @@ async function toggleDesistido() {
             <p v-if="postulante.OBSERVAC3" class="text-sm">{{ postulante.OBSERVAC3 }}</p>
           </CardContent>
         </Card>
-
-        <!-- Acciones de Desistimiento -->
-        <div v-if="!estaMatriculado" class="flex justify-between items-center pt-4 border-t">
-          <Button
-            :variant="postulante.desistido ? 'outline' : 'destructive'"
-            :disabled="isLoadingDesistimiento"
-            @click="toggleDesistido"
-            class="gap-2"
-          >
-            <svg v-if="postulante.desistido" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            {{ postulante.desistido ? 'Reactivar Postulante' : 'Marcar como Desistido' }}
-          </Button>
-        </div>
-        
-        <!-- Mensaje cuando está matriculado -->
-        <div v-else class="flex items-center gap-2 pt-4 border-t text-sm text-muted-foreground">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>El postulante está matriculado. No es posible marcarlo como desistido.</span>
-        </div>
       </div>
     </DialogContent>
   </Dialog>

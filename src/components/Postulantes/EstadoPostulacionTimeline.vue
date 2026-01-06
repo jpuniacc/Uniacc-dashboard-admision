@@ -4,23 +4,38 @@ import { formatearFecha } from '@/types/postulante'
 
 const props = defineProps<{
   estadoActual: EstadoPostulacion | null
+  esAlumnoVigente?: boolean
 }>()
 
 const pasos = [
   { id: null, texto: 'Pendiente', color: 'gray', bgColor: 'bg-gray-500', borderColor: 'border-gray-500', lineColor: 'bg-gray-400' },
   { id: 'E', texto: 'En Espera', color: 'yellow', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-500', lineColor: 'bg-yellow-400' },
   { id: 'A', texto: 'Aprobado', color: 'green', bgColor: 'bg-green-500', borderColor: 'border-green-500', lineColor: 'bg-green-400' },
-  { id: 'M', texto: 'Matriculado', color: 'blue', bgColor: 'bg-blue-600', borderColor: 'border-blue-600', lineColor: 'bg-blue-500' }
+  { id: 'M', texto: 'Matriculado', color: 'blue', bgColor: 'bg-blue-600', borderColor: 'border-blue-600', lineColor: 'bg-blue-500' },
+  { id: 'VIGENTE', texto: 'Alumno Vigente', color: 'cyan', bgColor: 'bg-cyan-600', borderColor: 'border-cyan-600', lineColor: 'bg-cyan-500' }
 ]
 
 function esPasoActual(pasoId: string | null): boolean {
+  // Si es alumno vigente, mostrar "Alumno Vigente" como estado actual
+  if (props.esAlumnoVigente) {
+    return pasoId === 'VIGENTE'
+  }
+  
   return props.estadoActual?.ESTADO === pasoId || 
          (!props.estadoActual && pasoId === null)
 }
 
 function esPasoCompletado(pasoId: string | null): boolean {
-  const orden: Record<string, number> = { 'null': 0, 'E': 1, 'A': 2, 'M': 3 }
-  const ordenActual = orden[props.estadoActual?.ESTADO || 'null']
+  const orden: Record<string, number> = { 'null': 0, 'E': 1, 'A': 2, 'M': 3, 'VIGENTE': 4 }
+  
+  // Si es alumno vigente, todos los pasos anteriores están completados
+  if (props.esAlumnoVigente) {
+    const ordenPaso = orden[pasoId || 'null']
+    return ordenPaso < orden['VIGENTE']
+  }
+  
+  const estadoEfectivo = props.estadoActual?.ESTADO || 'null'
+  const ordenActual = orden[estadoEfectivo]
   const ordenPaso = orden[pasoId || 'null']
   return ordenActual > ordenPaso
 }
@@ -60,7 +75,7 @@ function esPasoActivo(pasoId: string | null): boolean {
               esPasoActivo(paso.id) ? paso.bgColor : 'bg-gray-300 dark:bg-gray-600',
               esPasoActual(paso.id) ? 'scale-150 shadow-lg' : ''
             ]"
-            :style="esPasoActual(paso.id) ? `box-shadow: 0 0 0 4px ${paso.color === 'yellow' ? 'rgb(234 179 8 / 0.3)' : paso.color === 'green' ? 'rgb(34 197 94 / 0.3)' : paso.color === 'blue' ? 'rgb(37 99 235 / 0.3)' : 'rgb(107 114 128 / 0.3)'}` : ''"
+            :style="esPasoActual(paso.id) ? `box-shadow: 0 0 0 4px ${paso.color === 'yellow' ? 'rgb(234 179 8 / 0.3)' : paso.color === 'green' ? 'rgb(34 197 94 / 0.3)' : paso.color === 'blue' ? 'rgb(37 99 235 / 0.3)' : paso.color === 'cyan' ? 'rgb(8 145 178 / 0.3)' : 'rgb(107 114 128 / 0.3)'}` : ''"
           ></div>
         </div>
         

@@ -79,6 +79,7 @@ declare global {
   const useNuevaMatriculaLoaderStore: typeof import('./src/stores/loaders/nuevaMatricula')['useNuevaMatriculaLoaderStore']
   const usePlanificacionesCortoPlazoStore: typeof import('./src/stores/planificacionesCortoPlazoHistorico')['usePlanificacionesCortoPlazoStore']
   const usePortalStore: typeof import('./src/stores/portalStore')['usePortalStore']
+  const usePostulantesComparacionStore: typeof import('./src/stores/postulantes-comparacion')['usePostulantesComparacionStore']
   const usePostulantesStore: typeof import('./src/stores/postulantes')['usePostulantesStore']
   const usePrematriculaPdfStore: typeof import('./src/stores/prematriculapdf')['usePrematriculaPdfStore']
   const usePrematriculaXlsStore: typeof import('./src/stores/prematriculaxls')['usePrematriculaXlsStore']

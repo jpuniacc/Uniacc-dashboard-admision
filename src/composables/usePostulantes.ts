@@ -7,7 +7,8 @@ import type {
 } from '@/types/postulante'
 import { useErrorStore } from '@/stores/error'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://172.16.0.206:3001'
+// Usar URL relativa si está en HTTPS, o la variable de entorno
+const API_URL = import.meta.env.VITE_API_URL || (window.location.protocol === 'https:' ? '' : 'http://172.16.0.206:3001')
 
 export function usePostulantes() {
   const errorStore = useErrorStore()
@@ -33,6 +34,33 @@ export function usePostulantes() {
       console.error('Error al obtener postulantes:', error)
       errorStore.setError({
         error: error instanceof Error ? error : new Error('Error al obtener postulantes'),
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Obtener lista de postulantes con filtros adicionales (comparación)
+   * Excluye matriculados pagados y valida que al menos una carrera no esté oculta
+   * El filtrado se realiza en el frontend
+   */
+  async function fetchPostulantesComparacion(): Promise<PostulanteResponse | null> {
+    loading.value = true
+    try {
+      const response = await fetch(`${API_URL}/api/postulantes/comparacion`)
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+
+      const data: PostulanteResponse = await response.json()
+      return data
+    } catch (error) {
+      console.error('Error al obtener postulantes de comparación:', error)
+      errorStore.setError({
+        error: error instanceof Error ? error : new Error('Error al obtener postulantes de comparación'),
       })
       return null
     } finally {
@@ -211,6 +239,7 @@ export function usePostulantes() {
   return {
     loading,
     fetchPostulantes,
+    fetchPostulantesComparacion,
     fetchPostulanteById,
     fetchStats,
     exportPostulantes,

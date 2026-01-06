@@ -43,7 +43,9 @@ export class PostulantesService {
            WHERE PC.CODPOSTUL = INT.CODINT 
              AND PC.ANO = 2026
            FOR JSON PATH
-          ) as estados_json
+          ) as estados_json,
+          ISNULL((SELECT 'SI' FROM MT_ALUMNO X WHERE X.RUT=INT.RUT AND (X.CODCARPR=INT.CARRINT1 OR X.CODCARPR=INT.CARRINT2 OR X.CODCARPR=INT.CARRINT3 OR 
+          X.CODCARPR=INT.CARRINT4 OR X.CODCARPR=INT.CARRINT5) AND X.ESTACAD='VIGENTE' AND X.ANO_MAT=2025),'NO') AS ES_VIGENTE
         FROM MT_INTERE INT
         LEFT JOIN MT_CARRER C1 ON INT.CARRINT1 = C1.CODCARR
         LEFT JOIN MT_CARRER C2 ON INT.CARRINT2 = C2.CODCARR
@@ -58,6 +60,8 @@ export class PostulantesService {
       
       // Obtener lista de desistidos desde SQLite
       const desistidos = await this.desistimientoService.obtenerTodosDesistidos()
+      // Obtener estados de seguimiento desde SQLite
+      const estadosSeguimiento = await this.desistimientoService.obtenerTodosEstadosSeguimiento()
       
       // Parse estados_json for each postulante y agregar campo desistido
       const postulantes = dataResult.recordset.map((postulante: any) => {
@@ -74,6 +78,26 @@ export class PostulantesService {
         
         // Agregar campo desistido (convertir CODINT a string para comparar)
         postulante.desistido = desistidos.includes(String(postulante.CODINT))
+        // Agregar campo estado_seguimiento
+        const estadoSeguimientoManual = estadosSeguimiento[String(postulante.CODINT)] || null
+        const esVigenteAutomatico = postulante.ES_VIGENTE === 'SI'
+        
+        // Si ES_VIGENTE = 'SI' o tiene estado_seguimiento = 'alumno_vigente', establecer como alumno vigente
+        // Prioridad: si está marcado manualmente como alumno_vigente, mantenerlo; si no, usar ES_VIGENTE
+        if (estadoSeguimientoManual === 'alumno_vigente') {
+          postulante.estado_seguimiento = 'alumno_vigente'
+          // Si también es detectado automáticamente, marcar como tal
+          postulante.es_vigente_automatico = esVigenteAutomatico
+        } else if (esVigenteAutomatico) {
+          postulante.estado_seguimiento = 'alumno_vigente'
+          postulante.es_vigente_automatico = true
+        } else {
+          postulante.estado_seguimiento = estadoSeguimientoManual
+          postulante.es_vigente_automatico = false
+        }
+        
+        // Limpiar campo ES_VIGENTE (no lo necesitamos en el frontend)
+        delete postulante.ES_VIGENTE
         
         return postulante as Postulante
       })
@@ -90,6 +114,129 @@ export class PostulantesService {
       }
     } catch (error) {
       console.error('Error en getPostulantes:', error)
+      throw error
+    }
+  }
+
+  async getPostulantesComparacion(filtros: FiltrosPostulante): Promise<PostulanteResponse> {
+    try {
+      const pool = await getConnection()
+      const request = pool.request()
+
+      // Query con filtros adicionales: excluir matriculados pagados y validar carreras no ocultas
+      const dataQuery = `
+        SELECT
+          INT.*,
+          C1.NOMBRE_C as NOMBRE_C,
+          C2.NOMBRE_C as NOMBRE_C2,
+          C3.NOMBRE_C as NOMBRE_C3,
+          C4.NOMBRE_C as NOMBRE_C4,
+          C5.NOMBRE_C as NOMBRE_C5,
+          -- 1. Detalle de estados en JSON (Mantiene tu lógica original)
+          (SELECT
+              PC.CODCARR,
+              PC.ESTADO,
+              PC.FECREG,
+              PC.FECMOD,
+              PC.PRIORIDAD,
+              PC.JORNADA,
+              PC.MATRICULADO,
+              CARR.NOMBRE_C as NOMBRE_CARRERA
+           FROM MT_POSCAR PC
+           LEFT JOIN MT_CARRER CARR ON PC.CODCARR = CARR.CODCARR
+           WHERE PC.CODPOSTUL = INT.CODINT
+             AND PC.ANO = 2026
+           FOR JSON PATH
+          ) as estados_json,
+          -- 2. Validación de Vigencia (Mantiene tu lógica original)
+          ISNULL((SELECT 'SI' FROM MT_ALUMNO X WHERE X.RUT=INT.RUT AND (X.CODCARPR=INT.CARRINT1 OR X.CODCARPR=INT.CARRINT2 OR X.CODCARPR=INT.CARRINT3 OR
+          X.CODCARPR=INT.CARRINT4 OR X.CODCARPR=INT.CARRINT5) AND X.ESTACAD='VIGENTE' AND X.ANO_MAT=2025),'NO') AS ES_VIGENTE
+        FROM MT_INTERE INT
+        LEFT JOIN MT_CARRER C1 ON INT.CARRINT1 = C1.CODCARR
+        LEFT JOIN MT_CARRER C2 ON INT.CARRINT2 = C2.CODCARR
+        LEFT JOIN MT_CARRER C3 ON INT.CARRINT3 = C3.CODCARR
+        LEFT JOIN MT_CARRER C4 ON INT.CARRINT4 = C4.CODCARR
+        LEFT JOIN MT_CARRER C5 ON INT.CARRINT5 = C5.CODCARR
+        WHERE INT.ANO = 2026
+          AND INT.POSTULACION = 'SI'
+          AND INT.FECREG >= '2025-08-01'
+          -- 3. VALIDACIÓN CRÍTICA: Excluir si ya está matriculado y pagado en alguna de sus opciones
+          AND NOT EXISTS (
+              SELECT 1
+              FROM dbo.MT_POSCAR P
+              INNER JOIN dbo.MNP_MATRICULA_DETALLE M ON P.CODPOSTUL = M.CODCLI AND P.CODCARR = M.CODCARR
+              WHERE P.CODPOSTUL = INT.CODINT
+                AND P.MATRICULADO = 'S'
+                AND M.NUM_OPERACION IS NOT NULL
+                AND P.ANO = 2026
+          )
+          -- 4. VALIDACIÓN DE NEGOCIO: Al menos una de las carreras no debe estar oculta
+          AND EXISTS (
+              SELECT 1 FROM (VALUES (INT.CARRINT1), (INT.CARRINT2), (INT.CARRINT3), (INT.CARRINT4), (INT.CARRINT5)) AS V(Cod)
+              INNER JOIN dbo.MT_CARRER CA_FILT ON V.Cod = CA_FILT.CODCARR
+              WHERE COALESCE(CA_FILT.OcultarEP, 'NO') = 'NO'
+          )
+        ORDER BY INT.FECREG DESC
+      `
+
+      const dataResult = await request.query(dataQuery)
+      
+      // Obtener lista de desistidos desde SQLite
+      const desistidos = await this.desistimientoService.obtenerTodosDesistidos()
+      // Obtener estados de seguimiento desde SQLite
+      const estadosSeguimiento = await this.desistimientoService.obtenerTodosEstadosSeguimiento()
+      
+      // Parse estados_json for each postulante y agregar campo desistido
+      const postulantes = dataResult.recordset.map((postulante: any) => {
+        if (postulante.estados_json) {
+          try {
+            postulante.estados = JSON.parse(postulante.estados_json)
+          } catch (e) {
+            postulante.estados = []
+          }
+        } else {
+          postulante.estados = []
+        }
+        delete postulante.estados_json
+        
+        // Agregar campo desistido (convertir CODINT a string para comparar)
+        postulante.desistido = desistidos.includes(String(postulante.CODINT))
+        // Agregar campo estado_seguimiento
+        const estadoSeguimientoManual = estadosSeguimiento[String(postulante.CODINT)] || null
+        const esVigenteAutomatico = postulante.ES_VIGENTE === 'SI'
+        
+        // Si ES_VIGENTE = 'SI' o tiene estado_seguimiento = 'alumno_vigente', establecer como alumno vigente
+        // Prioridad: si está marcado manualmente como alumno_vigente, mantenerlo; si no, usar ES_VIGENTE
+        if (estadoSeguimientoManual === 'alumno_vigente') {
+          postulante.estado_seguimiento = 'alumno_vigente'
+          // Si también es detectado automáticamente, marcar como tal
+          postulante.es_vigente_automatico = esVigenteAutomatico
+        } else if (esVigenteAutomatico) {
+          postulante.estado_seguimiento = 'alumno_vigente'
+          postulante.es_vigente_automatico = true
+        } else {
+          postulante.estado_seguimiento = estadoSeguimientoManual
+          postulante.es_vigente_automatico = false
+        }
+        
+        // Limpiar campo ES_VIGENTE (no lo necesitamos en el frontend)
+        delete postulante.ES_VIGENTE
+        
+        return postulante as Postulante
+      })
+
+      // Devolver TODOS los registros sin paginación
+      const total = postulantes.length
+
+      return {
+        data: postulantes,
+        total,
+        page: 1,
+        limit: total,
+        totalPages: 1,
+      }
+    } catch (error) {
+      console.error('Error en getPostulantesComparacion:', error)
       throw error
     }
   }
@@ -123,7 +270,9 @@ export class PostulantesService {
            WHERE PC.CODPOSTUL = INT.CODINT 
              AND PC.ANO = 2026
            FOR JSON PATH
-          ) as estados_json
+          ) as estados_json,
+          ISNULL((SELECT 'SI' FROM MT_ALUMNO X WHERE X.RUT=INT.RUT AND (X.CODCARPR=INT.CARRINT1 OR X.CODCARPR=INT.CARRINT2 OR X.CODCARPR=INT.CARRINT3 OR 
+          X.CODCARPR=INT.CARRINT4 OR X.CODCARPR=INT.CARRINT5) AND X.ESTACAD='VIGENTE' AND X.ANO_MAT=2025),'NO') AS ES_VIGENTE
         FROM MT_INTERE INT
         LEFT JOIN MT_CARRER C1 ON INT.CARRINT1 = C1.CODCARR
         LEFT JOIN MT_CARRER C2 ON INT.CARRINT2 = C2.CODCARR
@@ -156,6 +305,26 @@ export class PostulantesService {
       // Agregar campo desistido (convertir CODINT a string)
       const estadoDesistimiento = await this.desistimientoService.obtenerEstado(String(postulante.CODINT))
       postulante.desistido = estadoDesistimiento?.desistido || false
+      // Agregar campo estado_seguimiento
+      const estadoSeguimientoManual = await this.desistimientoService.obtenerEstadoSeguimiento(String(postulante.CODINT))
+      const esVigenteAutomatico = postulante.ES_VIGENTE === 'SI'
+      
+      // Si ES_VIGENTE = 'SI' o tiene estado_seguimiento = 'alumno_vigente', establecer como alumno vigente
+      // Prioridad: si está marcado manualmente como alumno_vigente, mantenerlo; si no, usar ES_VIGENTE
+      if (estadoSeguimientoManual === 'alumno_vigente') {
+        postulante.estado_seguimiento = 'alumno_vigente'
+        // Si también es detectado automáticamente, marcar como tal
+        postulante.es_vigente_automatico = esVigenteAutomatico
+      } else if (esVigenteAutomatico) {
+        postulante.estado_seguimiento = 'alumno_vigente'
+        postulante.es_vigente_automatico = true
+      } else {
+        postulante.estado_seguimiento = estadoSeguimientoManual
+        postulante.es_vigente_automatico = false
+      }
+      
+      // Limpiar campo ES_VIGENTE (no lo necesitamos en el frontend)
+      delete postulante.ES_VIGENTE
 
       return postulante as Postulante
     } catch (error) {
@@ -272,6 +441,23 @@ export class PostulantesService {
       const desistidos = await this.desistimientoService.obtenerTodosDesistidos()
       const desistidosCount = desistidos.length
 
+      // Alumnos Vigentes (detectados automáticamente desde MT_ALUMNO)
+      const alumnosVigentesResult = await pool.request().query(`
+        SELECT COUNT(DISTINCT INT.CODINT) as count
+        FROM MT_INTERE INT
+        WHERE INT.ANO=2026 AND INT.POSTULACION='SI' AND INT.FECREG >= '2025-08-01'
+        AND EXISTS (
+          SELECT 1 FROM MT_ALUMNO X 
+          WHERE X.RUT=INT.RUT 
+          AND (X.CODCARPR=INT.CARRINT1 OR X.CODCARPR=INT.CARRINT2 OR X.CODCARPR=INT.CARRINT3 OR 
+               X.CODCARPR=INT.CARRINT4 OR X.CODCARPR=INT.CARRINT5) 
+          AND X.ESTACAD='VIGENTE' 
+          AND X.ANO_MAT=2025
+        )
+      `)
+
+      const alumnosVigentes = alumnosVigentesResult.recordset[0].count
+
       return {
         total,
         porCarrera: porCarreraResult.recordset,
@@ -285,6 +471,7 @@ export class PostulantesService {
         aprobados: aprobadosResult.recordset[0].count,
         pendientes: pendientesResult.recordset[0].count,
         desistidos: desistidosCount,
+        alumnosVigentes,
       }
     } catch (error) {
       console.error('Error en getStats:', error)

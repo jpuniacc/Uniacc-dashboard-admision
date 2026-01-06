@@ -42,6 +42,7 @@ const tieneFiltrosActivos = computed(() => {
     filtrosLocales.value.search ||
     filtrosLocales.value.carrera ||
     filtrosLocales.value.estado ||
+    filtrosLocales.value.estado_seguimiento ||
     filtrosLocales.value.comuna ||
     filtrosLocales.value.sexo ||
     filtrosLocales.value.ano
@@ -105,6 +106,22 @@ const tieneFiltrosActivos = computed(() => {
               <option value="aprobado">Aprobado</option>
               <option value="matriculado">Matriculado</option>
               <option value="desistido">Desistido</option>
+            </select>
+          </div>
+
+          <div class="relative z-30" style="isolation: isolate;">
+            <label class="mb-1.5 block text-xs font-medium">Estado de Seguimiento</label>
+            <select
+              :value="filtrosLocales.estado_seguimiento"
+              @change="handleUpdate('estado_seguimiento', ($event.target as HTMLSelectElement).value)"
+              class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring appearance-none cursor-pointer relative z-30"
+              style="z-index: 9999; position: relative;"
+            >
+              <option value="">Todos</option>
+              <option value="no_contesta">No Contesta</option>
+              <option value="pendiente_documentacion">Pendiente envío documentación</option>
+              <option value="evaluando">Evaluando</option>
+              <option value="alumno_vigente">Alumno Vigente</option>
             </select>
           </div>
 

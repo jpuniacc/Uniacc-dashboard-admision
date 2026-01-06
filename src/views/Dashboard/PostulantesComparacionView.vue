@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { Download, Eye, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-vue-next'
-import { usePostulantesStore } from '@/stores/postulantes'
+import { Download, Eye, ChevronLeft, ChevronRight, RefreshCw, Info } from 'lucide-vue-next'
+import { usePostulantesComparacionStore } from '@/stores/postulantes-comparacion'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,11 +17,12 @@ import PostulantesFiltros from '@/components/Postulantes/PostulantesFiltros.vue'
 import PostulantesStats from '@/components/Postulantes/PostulantesStats.vue'
 import PostulanteDetalle from '@/components/Postulantes/PostulanteDetalle.vue'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'vue-sonner'
 import { getNombreCompleto, getRutCompleto, formatearFecha, contarCarreras, obtenerEstadoCarrera, obtenerBadgeEstado } from '@/types/postulante'
 import type { Postulante } from '@/types/postulante'
 
-const store = usePostulantesStore()
+const store = usePostulantesComparacionStore()
 const { nextRefreshMessage } = useAutoRefresh()
 
 // Estado local
@@ -162,7 +163,10 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
     <div class="rounded-lg border bg-card p-4 shadow-sm">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-primary">Postulantes 2026</h1>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold tracking-tight text-primary">Postulantes 2026</h1>
+            <Badge variant="secondary" class="text-xs">Comparación</Badge>
+          </div>
           <p class="text-sm text-muted-foreground mt-1">
             {{ store.paginacion.total }} registrados
           </p>
@@ -192,6 +196,22 @@ function obtenerCarreraParaTabla(postulante: Postulante): { nombre: string | nul
         </div>
       </div>
     </div>
+
+    <!-- Alerta informativa sobre filtros aplicados -->
+    <Alert class="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+      <Info class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      <AlertTitle class="text-blue-900 dark:text-blue-100">Vista de Comparación</AlertTitle>
+      <AlertDescription class="text-blue-800 dark:text-blue-200 text-sm mt-1">
+        Esta vista muestra postulantes con filtros adicionales aplicados:
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li>Excluye postulantes que ya están <strong>matriculados y pagados</strong> en alguna de sus opciones de carrera.</li>
+          <li>Valida que al menos una de las carreras de interés <strong>no esté oculta</strong> (OcultarEP = 'NO').</li>
+        </ul>
+        <p class="mt-2 text-xs">
+          Use esta vista para comparar con la vista estándar y analizar las diferencias en los resultados.
+        </p>
+      </AlertDescription>
+    </Alert>
 
     <!-- Estadísticas -->
     <div class="relative z-0 mb-4" style="isolation: isolate;">

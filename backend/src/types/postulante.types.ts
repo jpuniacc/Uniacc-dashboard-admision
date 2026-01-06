@@ -90,6 +90,12 @@ export interface Postulante {
   
   // Estado de desistimiento (desde SQLite)
   desistido?: boolean
+  
+  // Estado de seguimiento (desde SQLite)
+  estado_seguimiento?: string | null // 'no_contesta' | 'pendiente_documentacion' | 'evaluando' | 'alumno_vigente'
+  
+  // Indica si el estado "alumno_vigente" fue detectado automáticamente desde MT_ALUMNO
+  es_vigente_automatico?: boolean
 }
 
 export interface PostulanteResponse {
@@ -113,6 +119,7 @@ export interface PostulanteStats {
   aprobados: number
   pendientes: number
   desistidos: number
+  alumnosVigentes: number
 }
 
 export interface FiltrosPostulante {

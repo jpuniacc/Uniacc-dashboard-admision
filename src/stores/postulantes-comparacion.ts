@@ -1,3 +1,4 @@
+import { ref, computed } from 'vue'
 import { defineStore, acceptHMRUpdate } from 'pinia'
 import type {
   Postulante,
@@ -6,8 +7,8 @@ import type {
 } from '@/types/postulante'
 import { usePostulantes } from '@/composables/usePostulantes'
 
-export const usePostulantesStore = defineStore('postulantes-store', () => {
-  const { fetchPostulantes, fetchPostulanteById, fetchStats, exportPostulantes, fetchRefresh } = usePostulantes()
+export const usePostulantesComparacionStore = defineStore('postulantes-comparacion-store', () => {
+  const { fetchPostulantesComparacion, fetchPostulanteById, fetchStats, exportPostulantes, fetchRefresh } = usePostulantes()
 
   // Estado
   const todosLosPostulantes = ref<Postulante[]>([]) // Cache completo de todos los registros
@@ -143,7 +144,7 @@ export const usePostulantesStore = defineStore('postulantes-store', () => {
   async function cargarPostulantes() {
     isLoading.value = true
     try {
-      const response = await fetchPostulantes()
+      const response = await fetchPostulantesComparacion()
       if (response) {
         // Cachear TODOS los datos
         todosLosPostulantes.value = response.data
@@ -268,6 +269,6 @@ export const usePostulantesStore = defineStore('postulantes-store', () => {
 
 // HMR support
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(usePostulantesStore, import.meta.hot))
+  import.meta.hot.accept(acceptHMRUpdate(usePostulantesComparacionStore, import.meta.hot))
 }
 
